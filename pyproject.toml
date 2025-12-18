@@ -9,8 +9,3 @@ dependencies = [
     "dotenv>=0.9.9",
     "pytest>=9.0.2",
 ]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0",
-]
