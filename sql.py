@@ -44,7 +44,7 @@ def confirm_user(user_id: int):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute(
-        """
+    """
         UPDATE users SET confirmed = 1 WHERE user_id = ?
     """,
         (user_id,),
