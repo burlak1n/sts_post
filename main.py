@@ -44,7 +44,14 @@ async def start(message: Message):
     )
 
     await message.answer(
-        "Привет! Подтверди участие в Первой Новогодней Почте Ингруп СтС",
+        "Привет! Это первая Новогодняя почта Ингруп СтС!\n\n"
+        "После регистрации пройдет жеребьевка, и ты получишь список СтСников, которые тоже учавствуют в почте. Именно они будут ждать твоего письма!\n"
+        "Письма приносишь на корпорат и, получив уведомление, забираешь свои.\n\n"
+        "Если не сможешь приехать на корпорат, то передай письма Милане или Роме (@andibka, @burlak1n)\n\n"
+        "Дд регистрации 22 декабря 23:59\n\n"
+        "По любым вопросам:\n"
+        "@andibka | @burlak1n\n\n"
+        "Для участия, нажми на кнопку ниже!",
         reply_markup=keyboard,
     )
 
@@ -55,9 +62,11 @@ async def button_callback(callback: CallbackQuery):
 
     if not is_confirmed(callback.from_user.id):
         confirm_user(callback.from_user.id)
-        await callback.message.edit_text("Супер, ты записан! Жди сообщений")
+        await callback.message.edit_reply_markup(reply_markup=None)
+        await callback.message.answer("Супер, ты зарегистрирован! Жди сообщений!")
     else:
-        await callback.message.edit_text("Ты уже записан!")
+        await callback.message.edit_reply_markup(reply_markup=None)
+        await callback.message.answer("Ты уже записан!")
 
 
 async def main():
