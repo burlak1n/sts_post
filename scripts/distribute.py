@@ -6,6 +6,35 @@ from typing import Dict, List, Tuple
 DB_NAME = "users.db"
 
 
+def recreate_distribution_table():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DROP TABLE IF EXISTS distribution")
+    cursor.execute("""
+        CREATE TABLE distribution (
+            telegram_id_sender INTEGER NOT NULL,
+            telegram_id_recipient INTEGER NOT NULL,
+            status INTEGER DEFAULT 0,
+            PRIMARY KEY (telegram_id_sender, telegram_id_recipient)
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def save_distribution(distribution: Dict[int, List[int]]):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    for sender_id, receivers in distribution.items():
+        for receiver_id in receivers:
+            cursor.execute("""
+                INSERT INTO distribution (telegram_id_sender, telegram_id_recipient, status)
+                VALUES (?, ?, 0)
+            """, (sender_id, receiver_id))
+    conn.commit()
+    conn.close()
+
+
 def get_all_confirmed_users() -> List[Tuple[int, str, str]]:
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -104,8 +133,13 @@ def main():
         print("Нужно минимум 2 пользователя для распределения")
         return
 
-    k = max(1, len(users) // 2)
+    recreate_distribution_table()
+
+    # k = min(5, max(1, len(users) // 4))
+    k = 3
     distribution = create_distribution(users, k)
+
+    save_distribution(distribution)
 
     is_valid, stats = verify_distribution(distribution)
 

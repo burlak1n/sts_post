@@ -17,6 +17,14 @@ def init_db():
             confirmed BOOLEAN DEFAULT 0
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS distribution (
+            telegram_id_sender INTEGER NOT NULL,
+            telegram_id_recipient INTEGER NOT NULL,
+            status INTEGER DEFAULT 0,
+            PRIMARY KEY (telegram_id_sender, telegram_id_recipient)
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -69,3 +77,93 @@ def get_confirmed_users():
     users = [row[0] for row in cursor.fetchall()]
     conn.close()
     return users
+
+
+def get_recipients_for_sender(sender_id: int):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT d.telegram_id_recipient, u.first_name, u.last_name, u.username, d.status
+        FROM distribution d
+        JOIN users u ON d.telegram_id_recipient = u.user_id
+        WHERE d.telegram_id_sender = ?
+    """, (sender_id,))
+    recipients = cursor.fetchall()
+    conn.close()
+    return recipients
+
+
+def get_user_contact(user_id: int):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT first_name, last_name, username FROM users WHERE user_id = ?", (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    if result:
+        name = f"{result[0]} {result[1] or ''}".strip()
+        username = result[2]
+        if username:
+            return f"@{username}" if not username.startswith("@") else username
+        return name
+    return f"ID: {user_id}"
+
+
+def update_distribution_status(sender_id: int, recipient_id: int, status: int):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE distribution SET status = ? 
+        WHERE telegram_id_sender = ? AND telegram_id_recipient = ?
+    """, (status, sender_id, recipient_id))
+    conn.commit()
+    conn.close()
+
+
+def take_letters_for_recipient(recipient_id: int):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT telegram_id_sender
+        FROM distribution
+        WHERE telegram_id_recipient = ? AND status = 1
+    """,
+        (recipient_id,),
+    )
+    senders = [row[0] for row in cursor.fetchall()]
+    cursor.execute(
+        """
+        UPDATE distribution SET status = 2
+        WHERE telegram_id_recipient = ? AND status = 1
+    """,
+        (recipient_id,),
+    )
+    conn.commit()
+    conn.close()
+    return senders
+
+
+def get_pending_letters():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT
+            d.telegram_id_sender,
+            us.username,
+            us.first_name,
+            us.last_name,
+            d.telegram_id_recipient,
+            ur.username,
+            ur.first_name,
+            ur.last_name
+        FROM distribution d
+        JOIN users us ON us.user_id = d.telegram_id_sender
+        JOIN users ur ON ur.user_id = d.telegram_id_recipient
+        WHERE d.status = 1
+        ORDER BY d.telegram_id_sender, d.telegram_id_recipient
+    """
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
